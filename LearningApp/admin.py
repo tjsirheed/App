@@ -15,8 +15,8 @@ register_profile_admin()
 def register_Lesson_admin():
     admin.site.register(
         Lesson,
-        list_display=('title', 'content'), 
-        fields=['title', 'content']  
+        list_display=('title', 'content', 'subject'), 
+        fields=['title', 'content', 'subject']  
     )
 
 register_Lesson_admin()
@@ -25,8 +25,8 @@ register_Lesson_admin()
 def register_Progress_admin():
     admin.site.register(
         Progress,
-        list_display=('user', 'lesson', 'completion_status'), 
-        fields=['user', 'lesson', 'completion_status']  
+        list_display=('user', 'lesson', 'completion_percentage','completion_status'), 
+        fields=['user', 'lesson', 'completion_percentage', 'completion_status']  
     )
 
 register_Progress_admin()
