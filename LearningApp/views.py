@@ -4,126 +4,15 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import UserQuestion
 from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.serializers import AuthTokenSerializer
 from django.contrib.auth.models import User
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 import requests
 from .models import Profile, Lesson, Progress
 from .serializers import ProfileSerializer, LessonSerializer, ProgressSerializer, AuthTokenSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
-
-'''
-
-from pydub import AudioSegment
-import io
-import speech_recognition as sr
-
-'''
-
-
-# Home Page with Gemini API integration
-
-'''
-@csrf_exempt
-def ask_ai_question(request):
-    if request.method == "POST":
-        # Check if the question is in text or audio format
-        question = request.POST.get('question', None)
-        audio_file = request.FILES.get('audio', None)
-        
-        # Convert audio to text if audio is provided
-        if audio_file:
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(audio_file) as source:
-                audio = recognizer.record(source)
-            try:
-                question = recognizer.recognize_google(audio)
-            except sr.UnknownValueError:
-                return JsonResponse({"error": "Could not understand the audio"}, status=400)
-            except sr.RequestError:
-                return JsonResponse({"error": "Speech Recognition service is unavailable"}, status=500)
-
-        if not question:
-            return JsonResponse({"error": "No question provided"}, status=400)
-
-        # Send the question to the Gemini API
-        gemini_api_url = settings.GEMINI_API_URL
-        headers = {'Authorization': f"Bearer {settings.GEMINI_API_KEY}"}
-
-        try:
-            response = requests.post(gemini_api_url, json={'question': question}, headers=headers)
-            answer = response.json().get('answer', 'No answer available')
-        except requests.RequestException:
-            return JsonResponse({"error": "Error fetching answer from Gemini"}, status=500)
-
-        # Save the question and answer to the database
-        if request.user.is_authenticated:
-            UserQuestion.objects.create(user=request.user, question_text=question, answer_text=answer)
-
-        
-        return JsonResponse({"question": question, "answer": answer})
-
-    return JsonResponse({"error": "Invalid request method"}, status=405)
-
-
-'''
-
-'''
-@csrf_exempt
-def ask_ai_question(request):
-    if request.method == "POST":
-        # Check if the question is in text or audio format
-        question = request.POST.get('question', None)
-        audio_file = request.FILES.get('audio', None)
-        
-        # Convert audio to text if audio is provided
-        if audio_file:
-            recognizer = sr.Recognizer()
-            
-            # Convert the uploaded audio to a WAV format compatible with SpeechRecognition
-            audio_data = AudioSegment.from_file(io.BytesIO(audio_file.read()))
-            wav_audio = io.BytesIO()
-            audio_data.export(wav_audio, format="wav")
-            wav_audio.seek(0)
-            
-            with sr.AudioFile(wav_audio) as source:
-                audio = recognizer.record(source)
-            try:
-                question = recognizer.recognize_google(audio)
-            except sr.UnknownValueError:
-                return JsonResponse({"error": "Could not understand the audio"}, status=400)
-            except sr.RequestError:
-                return JsonResponse({"error": "Speech Recognition service is unavailable"}, status=500)
-
-        if not question:
-            return JsonResponse({"error": "No question provided"}, status=400)
-
-        # Send the question to the Gemini API
-        gemini_api_url = settings.GEMINI_API_URL
-        headers = {'Authorization': f"Bearer {settings.GEMINI_API_KEY}"}
-
-        try:
-            response = requests.post(gemini_api_url, json={'question': question}, headers=headers)
-            answer = response.json().get('answer', 'No answer available')
-        except requests.RequestException:
-            return JsonResponse({"error": "Error fetching answer from Gemini"}, status=500)
-
-        # Save the question and answer to the database 
-        if request.user.is_authenticated:
-            UserQuestion.objects.create(user=request.user, question_text=question, answer_text=answer)
-
-        # Return the answer
-        return JsonResponse({"question": question, "answer": answer})
-
-    return JsonResponse({"error": "Invalid request method"}, status=405)
-
-
-'''
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow any user to access this endpoint
@@ -140,15 +29,15 @@ def custom_auth_token(request):
 
 @api_view(['GET'])
 def profile_detail_api(request, pk):
-    try:
+        
         profile = get_object_or_404(Profile, pk=pk)
         serializer = ProfileSerializer(profile)
         return Response(serializer.data)
-    except Profile.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+
     
 
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def update_profile(request):
     try:
         profile = Profile.objects.get(user=request.user)
@@ -163,6 +52,7 @@ def update_profile(request):
 
 # Get a list of lessons or create a new lesson
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def lesson_list_api(request):
     if request.method == 'GET':
         lessons = Lesson.objects.all()
@@ -209,12 +99,15 @@ def progress_detail_api(request, pk):
 #Update user progress
 @api_view(['POST'])
 def update_progress(request, lesson_id):
+
+    profile = get_object_or_404(Profile, user=request.user)
+
     try:
         lesson = Lesson.objects.get(pk=lesson_id)
     except Lesson.DoesNotExist:
         return Response({"error": "Lesson not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    progress, created = Progress.objects.get_or_create(user=request.user, lesson=lesson)
+    progress, created = Progress.objects.get_or_create(user=profile, lesson=lesson)
     progress.completion_percentage = request.data.get('completion_percentage', progress.completion_percentage)
 
     if progress.completion_percentage == 100.0:

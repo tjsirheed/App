@@ -21,7 +21,7 @@ class Lesson(models.Model):
     subject = models.CharField(max_length=50, choices = SUBJECT_CHOICES, default = 'Math')
 
     def __str__(self):
-        return f"{self.title}({self.get_subject_display})"
+        return f"{self.title}({self.get_subject_display()})"
 
 class Progress(models.Model):
     user = models.ForeignKey(Profile, on_delete=models.CASCADE, null=True, blank=True)
@@ -30,7 +30,7 @@ class Progress(models.Model):
     completion_status = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username}'s Progress in {self.lesson.title}"
+        return f"{self.user.user.username if self.user else 'No user'}'s Progress in {self.lesson.title}"
     
 
 class UserQuestion(models.Model):
